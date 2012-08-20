@@ -34,7 +34,7 @@ module AE
     end
   end
 end
-
+require File.join(File.dirname(__FILE__), "Color.rb")
 
 
 # The main class of the OnScreen toolkit. Everything is a widget.
@@ -45,37 +45,64 @@ class AE::GUI::OnScreen::Widget
 
   # Detect if SketchUp supports transparent color drawing:
   @@supportsAlpha = Sketchup.version.to_i >= 8
+
+
   # Colors
-  @@transparent = Sketchup::Color.new([255,255,255,0])
-  @@white = Sketchup::Color.new("white")
-  @@gray = Sketchup::Color.new("gray")
-  @@black = Sketchup::Color.new("black")
+  dialog_color = AE::Color.new().from_hex( UI::WebDialog.new.get_default_dialog_color )
+  @@color = {
+    :foregroundColor => nil,
+    :white => AE::Color["white"],
+    :gray => AE::Color["gray"],
+    :black => AE::Color["black"],
+    :transparent => AE::Color[255,255,255,0],
+    :Window => AE::Color[dialog_color],
+    :ThreeDHighlight => AE::Color[dialog_color].contrast(0.8).gamma(1.6),
+    :ThreeDLightShadow => AE::Color[dialog_color].contrast(0.8).gamma(0.9),
+    :ButtonFace => AE::Color[dialog_color].contrast(0.8),
+    :ThreeDFace => AE::Color[dialog_color].contrast(0.8),
+    :ButtonShadow => AE::Color[dialog_color].contrast(0.8).gamma(0.6),
+    :ThreeDShadow => AE::Color[dialog_color].contrast(0.8).gamma(0.6),
+    :ThreeDDarkShadow => AE::Color[dialog_color].contrast(0.8).gamma(0.4),
+    :WindowText => AE::Color[dialog_color].inverse_brightness
+  }
 
 
+  # TODO: text size?, text color
   @@default_style = {
-    :box => {
-      :backgroundColor => @@white,
+    :default => {
+      :backgroundColor => @@color[:Window],
       :borderRadius => 0,
-      :borderColor => @@gray,
-      :borderWidth => 1,
+      :borderColor => @@color[:transparent],
+      :borderWidth => 0,
       :borderStyle => "",
-      :shadowColor => Sketchup::Color.new([0,0,0,50]),
-      :shadowWidth => 0
+      :shadowColor => Sketchup::Color.new([0,0,0,20]),
+      :shadowWidth => 0,
+      :textColor => @@color[:WindowText],
+      :textShadow => false,
+      :textShadowColor => @@color[:WindowText].fade(0.2),
+      :textShadowOffset => [1,1,0],
+      :textShadowRadius => 0
     }
   }
+
+
   @@default_layout = {
-    :position => :relative,
-    :point => ORIGIN,
-    :align => :left,
-    :valign => :top,
-    :flow => :horizontal,
-    :width => 100,
-    :minWidth => nil,
-    :maxWidth => nil,
-    :height => 40,
-    :minHeight => nil,
-    :maxHeight => nil
+    :default => {
+      :position => :relative,
+      :left => 0,
+      :top => 0,
+      :align => :left,
+      :valign => :top,
+      :flow => :horizontal,
+      :width => 100,
+      :minWidth => nil,
+      :maxWidth => nil,
+      :height => 40,
+      :minHeight => nil,
+      :maxHeight => nil
+    }
   }
+
 
   def initialize(hash={})
     @parent = nil
@@ -87,7 +114,7 @@ class AE::GUI::OnScreen::Widget
     @remembered_style = nil
     self.style=(hash) # TODO: filter unnecessary elements out of hash
     # The layout includes properties for positioning and sizing.
-    @remembered_layout = {}
+    @remembered_layout = nil
     self.layout=(hash) # TODO: filter unnecessary elements out of hash
     @events = {}
   end
@@ -100,12 +127,17 @@ class AE::GUI::OnScreen::Widget
   # @param [Hash] style properties and values
   #
   # @return [Hash] the complete style of the widget
+# TODO: make :normal optional
   def style=(hash={})
     return @remembered_style = hash if @window.nil?
     type = self.class.name[/[^\:]+$/].downcase.to_sym
-    widget_style = deep_merge(@window.style[type]||{}, hash)
-    puts "type: #{type.inspect}\n@@default_style: #{@@default_style.inspect}\n window_style: #{@window.style.inspect}"
-    @style = deep_merge(@@default_style[type]||{}, widget_style)
+    default = @@default_style[:default].merge(@@default_style[type]||{})
+    @style = deep_merge(
+      default,
+      @window.style,
+      @window.style[type],
+      hash
+    )
   end
 
 
@@ -119,8 +151,13 @@ class AE::GUI::OnScreen::Widget
   def layout=(hash={})
     return @remembered_layout = hash if @window.nil?
     type = self.class.name[/[^\:]+$/].downcase.to_sym
-    widget_layout = deep_merge(@window.layout, hash)
-    @layout = deep_merge(@@default_layout, widget_layout)
+    default = @@default_layout[:default].merge(@@default_layout[type]||{})
+    @layout = deep_merge(
+      default,
+      @window.layout,
+      @window.layout[type],
+      hash
+    )
   end
 
 
@@ -196,7 +233,7 @@ class AE::GUI::OnScreen::Widget
   def trigger(type, pos)
     # Example: Check if the widget has a sensitive area that includes pos.
     # Then set the widget state for styling or call an action.
-    @events[type].call
+    @events[type].call if @events.include?(type)
   end
 
 
@@ -245,33 +282,32 @@ class AE::GUI::OnScreen::Widget
   # Draw a styled box.
   # This is a geometric primitive that can be used to build most widgets.
   #
-  # @param [Sketchup::View]
-  # @param [Array] (absolute) +Position+ where to draw the widget on the screen.
-  # @param [Array] +Width+ and +Height+ of space to fill.
-  # @param [Hash] (optional) +Style+ with CSS-like properties.
+  # @param [Sketchup::View] view
+  # @param [Array] pos (absolute) +Position+ where to draw the widget on the screen.
+  # @param [Array] size +Width+ and +Height+ of space to fill.
+  # @param [Hash] style (optional) +Style+ with CSS-like properties.
   #   Style supports these properties:
   #   * +backgroundColor+ [Sketchup::Color]
-  #   * +borderRadius+    [Numeric|Array]
-  #   * +borderColor+     [Sketchup::Color]
+  #   * +borderRadius+    [Numeric, Array(Numeric,Numeric,Numeric,Numeric)]
+  #   * +borderColor+     [Numeric, Array(Numeric,Numeric,Numeric,Numeric)]
   #   * +borderWidth+     [Numeric] 0..10
   #   * +borderStyle+     [String] of view.line_stipple
   #   * +shadowColor+     [Sketchup::Color]
   #   * +shadowWidth+     [Numeric] 0..10
   #
   # @return [Sketchup::View]
-  def draw_box(view, pos, size, style={})
-    style = deep_merge(@@default_style[:box], style)
-    pos = Geom::Point3d.new(pos.to_a) # TODO: make sure that pos has no more than 2...3 values
+  def draw_box(view, pos, size, style=@@default_style[:default])
+    pos = Geom::Point3d.new(pos) # make sure that pos has no more than 2...3 values
     rectangle = [ pos, pos+[size[0],0], pos+size, pos+[0,size[1]] ]
-    # create rounded corners
+    # create rounded corners if requested
     if !style[:borderRadius].nil? && style[:borderRadius] != 0
-      rectangle, corners = rectangle, []
+      rectangle, corners = [], rectangle
       radius = style[:borderRadius]
-      radius = [radius]*4 if radius.is_a? Numeric
+      radius = [radius]*4 unless radius.is_a? Array
       corners.each_with_index{|c, i|
+        r = [size[0]/2, size[1]/2, radius[i]].min.to_i # radius can't be bigger than half the width/height
         # create segments
-        segments = [2, radius[i]/3].max
-        r = radius[i]
+        segments = [2, r/3].max
         angle = 0.5*Math::PI/segments
         # offset to move the corner points to the rotation center
         offset = [ (i%3==0?1:-1)*r,  (i<2?1:-1)*r,  0 ]
@@ -295,43 +331,109 @@ class AE::GUI::OnScreen::Widget
       }
     end
     # draw the background
-    if style[:backgroundColor] != @@transparent
+    if !style[:backgroundColor].nil? && style[:backgroundColor] != @@color[:transparent]
       view.drawing_color = style[:backgroundColor]
       view.draw2d(GL_POLYGON, rectangle)
     end
     # draw the border
     if !style[:borderWidth].nil? && style[:borderWidth] > 0
-      view.drawing_color = style[:borderColor]
       view.line_width = style[:borderWidth]
       view.line_stipple = style[:borderStyle]
-      view.draw2d(GL_LINE_LOOP, rectangle)
+      unless style[:borderColor].is_a? Array
+        view.drawing_color = style[:borderColor]
+        view.draw2d(GL_LINE_LOOP, rectangle)
+      else # different colors for top, right, bottom, left
+        border = rectangle.dup
+        4.times{|i|
+          bl = 1
+          if !style[:borderRadius].nil? && style[:borderRadius] != 0
+            bl += ([2, radius[i-1]/3].max/2.0).floor
+            (border.push(*border.slice!(0,bl)); border.push(border[0])) if i==0
+            bl += ([2, radius[i]/3].max/2.0).ceil
+          end
+          b = border.slice!(0, bl)
+          b << border[0]
+          view.drawing_color = style[:borderColor][i]
+          view.draw2d(GL_LINE_STRIP, b)
+        }
+      end
     end
   end
 
+
+  # Draw a styled text.
+  # This is mainly a wrapper for View.draw_text which does not accept a text color.
+  #
+  # @param [Sketchup::View] view
+  # @param [Array] pos the (absolute) +Position+ where to draw the text on the screen.
+  # @param [String] text the text to draw.
+  # @param [Hash] style an (optional) +Style+ with CSS-like properties.
+  #   Style supports these properties:
+  #   * +textColor+  [Sketchup::Color]
+  #   * +textShadow+       [Boolean]
+  #   * +textShadowColor+  [Sketchup::Color]
+  #   * +textShadowOffset+ [Geom::Vector3d, Array(Numeric,Numeric,Numeric)]
+  #   * +textShadowRadius+ [Numeric] 0 or 1
+  #
+  # @return [Sketchup::View]
+  def draw_text(view, pos, text, style={})
+    force_color = !@window.nil? && !style[:textColor].nil? && style[:textColor]!=@@color[:foregroundColor]
+    # View.draw_text does not allow to set a text color but uses the default edge color.
+    # Change the edge color only if necessary.
+    if force_color
+      if style[:textShadow]
+        @window.model.rendering_options["ForegroundColor"] = style[:textShadowColor]
+        view.draw_text( pos+style[:textShadowOffset], text )
+        if style[:textShadowRadius] > 0 # only 1 supported
+          view.draw_text( pos+style[:textShadowOffset]+[-1,-1,0], text )
+          view.draw_text( pos+style[:textShadowOffset]+[0,-1,0], text )
+          view.draw_text( pos+style[:textShadowOffset]+[1,-1,0], text )
+          view.draw_text( pos+style[:textShadowOffset]+[1,0,0], text )
+          view.draw_text( pos+style[:textShadowOffset]+[1,1,0], text )
+          view.draw_text( pos+style[:textShadowOffset]+[0,1,0], text )
+          view.draw_text( pos+style[:textShadowOffset]+[-1,1,0], text )
+          view.draw_text( pos+style[:textShadowOffset]+[-1,0,0], text )
+        end
+      end
+      @window.model.rendering_options["ForegroundColor"] = style[:textColor]
+    end
+
+    view.draw_text( pos, text )
+
+    # Reset the edge color and optionally more effects.
+    @window.model.rendering_options["ForegroundColor"] = style[:foregroundColor] if force_color
+    rescue
+    @window.model.rendering_options["ForegroundColor"] = style[:foregroundColor]
+  end
 
 
   # Merge two hashes and all Hashes inside.
   # In contrast, Hash.merge does not support nested hashes,
   # but would replace Hashes in <oldhash> by ones of the <newhash>.
+  # # TODO: edited to not add new keys, only update old values.
   #
   # @param [Hash] oldhash the hash whose keys' values should be updated.
   # @param [Hash] newhash the hash whose key/values should be added to the oldhash
   #   or replace the ones of the oldhash.
   #
   # @return [Hash]
-  def deep_merge(oldhash, newhash)
-    r = {}
-    block = Proc.new{|key, oldval, newval| 
-      r[key] = oldval.class == Hash ? oldval.merge(newval, &block) : newval
+  def deep_merge(*hashes)
+    hashes = hashes.find_all{|h| h.is_a?(Hash) && !h.empty?}
+    result = hashes.shift.clone
+    hashes.length.times{|i|
+      new = hashes.shift
+      r = {}
+      block = Proc.new{|key, oldval, newval|
+        r[key] = oldval.class == Hash ? oldval.merge(newval.reject{|k,v| !oldval.keys.include? k}, &block) : newval
+      }
+      result.merge!(new.reject{|k,v| !result.keys.include? k}, &block)
     }
-    oldhash.merge(newhash, &block)
+    return result
   end
 
 
 
 end
-
-
 
 
 
@@ -342,28 +444,36 @@ class AE::GUI::OnScreen::Container < AE::GUI::OnScreen::Widget
   def initialize(hash={})
     # List of widgets that are contained in this one (children).
     @children = []
-    super
+    super(hash)
+  end
+
+  #DEBUG
+  def trigger(type, pos)
   end
 
 
-  def add(widget)
-    @children << widget
-    widget.on_removed(widget.parent) unless widget.parent.nil?
-    widget.on_added(self)
-    widget.parent = self
-    widget.window = self.window unless self.window.nil?
-    widget.on_added_to_window(self.window) unless self.window.nil?
-    return widget
+  def add(*args)
+    args.each{|widget|
+      @children << widget
+      widget.on_removed(widget.parent) unless widget.parent.nil?
+      widget.on_added(self)
+      widget.parent = self
+      widget.window = self.window unless self.window.nil?
+      widget.on_added_to_window(self.window) unless self.window.nil?
+    }
+    return args.length==1? args[0] : args
   end
 
 
-  def remove(widget)
-    @children.delete(widget)
-    widget.parent = nil
-    widget.on_removed(self)
-    widget.window = nil
-    widget.on_removed_from_window(self.window) unless self.window.nil? # TODO: conditional necessary?
-    return widget
+  def remove(*args)
+    args.each{|widget|
+      @children.delete(widget)
+      widget.parent = nil
+      widget.on_removed(self)
+      widget.window = nil
+      widget.on_removed_from_window(self.window) unless self.window.nil? # TODO: conditional necessary?
+    }
+    return args.length==1? args[0] : args
   end
 
 
@@ -408,7 +518,7 @@ class AE::GUI::OnScreen::Container < AE::GUI::OnScreen::Widget
   def compile_layout(cpos, csize)
     layouted_widgets = {self => {:pos=>cpos, :size=>size}} # TODO: changed from csize to self.size, correct?
     cpos = Geom::Point3d.new(cpos)
-    relpos = [0, 0, 0] # relative position
+    relpos = Geom::Vector3d.new(0,0,0) # relative position
     # container position and size
     cx, cy = *cpos
     cw, ch = *csize
@@ -417,15 +527,12 @@ class AE::GUI::OnScreen::Container < AE::GUI::OnScreen::Widget
       # widget position and size
       wsize = w.size
       ww, wh = *wsize
-      # puts "widget: #{w}" # TODO
-      # puts "layout: #{w.layout.inspect}" # TODO
-      wpos = cpos + w.layout[:point].to_a
-#puts wpos.inspect+"is now a vector?" if wpos.is_a?(Geom::Vector3d)
+      wpos = cpos + [ w.layout[:left], w.layout[:top], 0 ]
       # relative layout sets the widget right or below a previous sibling
       if w.layout[:position] == :relative
         wpos += relpos
         # TODO: this behaves not exactly like relative top/left in CSS, but more like margin
-        relpos += (w.parent.layout[:flow] == :horizontal)? [wpos[0]+ww, 0, 0] : [0, wpos[1]+wh, 0]
+        relpos += (w.parent.layout[:flow] == :horizontal)? [w.layout[:left]+ww, 0, 0] : [0, w.layout[:height]+wh, 0]
         # == # relpos += (self.layout[:flow] == :horizontal)? [wpos[0]+ww, 0] : [0, wpos[1]+wh, 0]
       # absolute layout can have:
       # width, height = :max  stretched to the full width of the parent container

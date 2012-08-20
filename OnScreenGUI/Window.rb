@@ -6,25 +6,21 @@ require File.join(File.dirname(__FILE__), "Core.rb")
 class AE::GUI::OnScreen::Window < AE::GUI::OnScreen::Container
 
 
-  attr_accessor :style, :changed, :widgets # TODO widgets only for debug
+  attr_accessor :style, :changed, :widgets, :model # TODO widgets only for debug
   alias_method :changed?, :changed
 
 
   def initialize(context=Sketchup.active_model, hash={})
     super(hash)
-    @model = (context.is_a?(Sketchup::View))? context.model : context
+    @model = (context.nil?)? Sketchup.active_model : (context.is_a?(Sketchup::View))? context.model : context
     @window = self
+    @@color[:foregroundColor] = @model.rendering_options["ForegroundColor"] # the edge color
     # whether the viewport size has changed
     @changed = true
     # The canvas variable keeps track of all absolute positions of all widgets.
     @widgets = {}
     view = @model.active_view
     @viewport = [view.vpwidth, view.vpheight]
-    #@style = {}
-    #@layout = {}
-    # TODO: add style here, only per instance of window (allows different instances to have different styles)
-    # Get default colors here
-    # Try UI::WebDialog.new.get_background_color; then delete webdialog
   end
 
 
@@ -48,7 +44,7 @@ class AE::GUI::OnScreen::Window < AE::GUI::OnScreen::Container
     }
     responding_widgets.each{|widget|
       relpos = pos - @widgets[widget][:pos]
-      widget.trigger(type, relpos)
+      #widget.trigger(type, relpos) # TODO
     }
   end
 
@@ -77,7 +73,7 @@ class AE::GUI::OnScreen::Window < AE::GUI::OnScreen::Container
   #
   # @return [Hash] the complete style of the widget
   def style=(hash)
-    @style = @@default_style.merge(hash)
+    @style = hash # @@default_style.merge(hash) # TODO
   end
 
 
@@ -89,7 +85,7 @@ class AE::GUI::OnScreen::Window < AE::GUI::OnScreen::Container
   #
   # @return [Hash] the complete layout of the widget
   def layout=(hash)
-    @layout = @@default_layout.merge(hash)
+    @layout = hash # @@default_layout.merge(hash) # TODO
   end
 
 
@@ -110,7 +106,7 @@ class AE::GUI::OnScreen::Window < AE::GUI::OnScreen::Container
   def on_removed_from_window(old_window)
     super
     self.widgets.each_key{|w|
-      w.on_removed_drom_window(window)
+      w.on_removed_from_window(window)
     }
   end
 

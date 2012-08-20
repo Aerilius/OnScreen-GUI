@@ -1,0 +1,1 @@
+/home/andreas/.wine/drive_c/Programme/Google/Google SketchUp 8/Plugins/ae_Lib/color/ae_Color.rb

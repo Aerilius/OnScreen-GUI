@@ -3,35 +3,34 @@ require File.join(File.dirname(__FILE__), "Core.rb")
 
 
 
-# A button widget
-class AE::GUI::OnScreen::Button < AE::GUI::OnScreen::Widget
+# A checkbox widget
+class AE::GUI::OnScreen::Checkbox < AE::GUI::OnScreen::Widget
 
-  @@default_style[:button] = {
+  @@default_style[:checkbox] = {
     :backgroundColor => @@color[:ButtonFace],
     :borderColor => [ @@color[:ThreeDHighlight], @@color[:ThreeDShadow], @@color[:ThreeDDarkShadow], @@color[:ThreeDLightShadow] ],
     :borderWidth => 2,
-    :borderRadius => [4,4,4,4],
+    :borderRadius => 0,
     :normal => {},
     :hover => {
-      :backgroundColor => AE::Color["red"],
       :borderColor => [ @@color[:ThreeDDarkShadow], @@color[:ThreeDLightShadow], @@color[:ThreeDHighlight], @@color[:ThreeDShadow] ]
     },
     :active => {:backgroundColor => Sketchup::Color.new("green")},
     :disabled => {:backgroundColor => Sketchup::Color.new("green")}
   }
 
-  def initialize(text="", hash={})
-    hash[:width] ||= text.split(/\n/).inject(0){|l,s| s.length>l ? s.length : l} * 10 + 20
-    hash[:height] ||= (text.scan(/\n/).length+1) * 15 + 10
+  def initialize(checked=true, label="", hash={})
+    hash[:width] ||= label.split(/\n/).inject(0){|l,s| s.length>l ? s.length : l} * 10 + 25
+    hash[:height] ||= 25
     super(hash)
-    @data = {:text => text}
+    @data = {:checked => checked, :label => label}
     @state = :normal
   end
 
 
   def trigger(type, pos)
     #super
-    # No need to check pos since the whole button is sensitive for events.
+    # No need to check pos since the whole checkbox is sensitive for events.
     # No need to distinguish between several sensitive areas of the widget.
     # Eventually call other methods from here:
     @state = :hover if type == :move
@@ -41,15 +40,16 @@ class AE::GUI::OnScreen::Button < AE::GUI::OnScreen::Widget
 
   def draw(view, pos, size)
     style = deep_merge(@style, @style[@state])
-    draw_box(view, pos, size, style)
-    reflection_style = {
-      :backgroundColor => @@color[:white].alpha(30),
-      :borderWidth => 0,
-      :borderRadius => [style[:borderRadius][0], style[:borderRadius][1], 0, 0]
-    }
-    reflection_style = deep_merge(style, reflection_style)
-    draw_box(view, pos, [size[0], 0.5*size[1]], reflection_style)
-    draw_text(view, pos+[10,4,0], @data[:text], style)
+    draw_box(view, pos+[4,4,0], [size[1]-8,size[1]-8], style)
+    offset = [ (size[1]-14)/2.0, (size[1]-14)/2.0, 0]
+    draw_text(view, pos+[size[1]+offset[0],4,0], @data[:label], style) if @data[:label]!=""
+    if @data[:checked]
+      # draw checkmark
+      view.drawing_color = style[:textColor]
+      view.line_width = 3
+      view.line_stipple = ""
+      view.draw2d(GL_LINE_STRIP, pos+offset+[3,8,0], pos+offset+[6,12,0], pos+offset+[10,2,0])
+    end
     # TODO: where/when/how is it best to reset the state
     # if the cursor isn't anymore over the element?
     @state = :normal

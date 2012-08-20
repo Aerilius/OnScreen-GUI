@@ -37,4 +37,9 @@ module AE
 end
 
 dir = File.join(File.dirname(__FILE__), "OnScreenGUI")
-Dir.glob( File.join(dir, '*.{rb,rbs}') ).each{|f| load f}
+#load File.join(dir, "Core.rb")
+Dir.glob( File.join(dir, '*.{rb,rbs}') ).
+  #find_all{|f| !f[/Core\.rbs?$/] }.
+  each{|f| load f }
+
+
