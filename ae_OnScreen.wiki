@@ -1,0 +1,199 @@
+This is a framework for defining GUI elements using the SketchUp OpenGL drawing methods.
+It allows placing widgets in a nested, dynamic layout and styling them with CSS-like properties.
+An example implementation can be found in TestTool.rb / AE::GUI::OnScreen::TestTool.
+<img src="TestTool_screenshot1.png" alt="some widgets shown by TestTool.rb" /> 
+
+
+= Public Methods
+
+{{{
+OnScreen::Widget.new(hash)
+}}}
+{{{
+OnScreen::Container.new(hash)
+}}}
+{{{
+OnScreen::Button.new(label, hash)
+}}}
+{{{
+OnScreen::Checkbox.new(checked, label, hash)
+}}}
+This creates various widgets. Later, a block could be added to some widgets.
+
+**label** [//String//] The label of the widget.
+
+**checked** [//Boolean//] The checked status of a checkbox / radio button.
+
+**hash** [Hash] Optionally CSS-properties for layout and style. 
+  If incomplete or not given, properties of the window or default properties will be taken.
+\\ \\
+
+
+{{{
+OnScreen::Widget.style=(hash)
+}}}
+This also sets a style to a widget.
+
+**hash** [Hash] Optionally CSS-properties for style. 
+  If incomplete or not given, properties of the window or default properties will be taken.
+\\ \\
+
+
+{{{
+OnScreen::Widget.layout=(hash)
+}}}
+This also sets a layout to a widget.
+
+**hash** [Hash] Optionally CSS-properties for layout. 
+  If incomplete or not given, properties of the window or default properties will be taken.
+\\ \\
+
+
+{{{
+OnScreen::Widget.on=(type, &block)
+}}}
+This sets an event handler for a widget.
+
+**type** [Symbol] a Symbol indicating the type of event (//:click//, //:mouseOver//, ...?).
+
+**block** [Symbol] a code block to execute when the event is triggered.
+\\ \\
+
+
+{{{
+OnScreen::Window.new(context, hash)
+}}}
+This is the root element for any widgets to be drawn on the screen. It would be created inside a Tool.
+
+**context** [//Sketchup::Model, Sketchup::View//] Optionally a model or view to which the Window belongs (Multi-document interface etc.).
+
+**hash** [Hash] Optionally CSS-properties for layout and style. These properties attached to the Window
+  serve as a template for all other widgets.
+\\ \\
+
+
+{{{
+OnScreen::Window.add(*widgets)
+}}}
+{{{
+OnScreen::Container.add(*widgets)
+}}}
+Attaches widgets to a container element (or to the window).
+
+**widgets** [//OnScreen::Widget//] One or several widget instances.
+\\ \\
+
+
+{{{
+OnScreen::Window.remove(*widgets)
+}}}
+{{{
+OnScreen::Container.remove(*widgets)
+}}}
+Removes widgets from their container and from the window.
+
+**widgets** [//OnScreen::Widget//] One or several widget instances.
+\\ \\
+
+
+{{{
+OnScreen::Window.trigger(type, pos)
+}}}
+Triggers an event on the window, which will forwarded the event to the contained elements.
+  As for now, this must be called from a Tool's event handler method.
+
+**type** [//Symbol//] a Symbol indicating the type of event (//:click//, //:mouseOver//, ...?).
+
+**pos** [//Geom::Point3d//] a relative position to the widget's/window's upper left corner.
+\\ \\
+
+
+{{{
+OnScreen::Window.draw(view)
+}}}
+Draws the window and all contained widgets onto the screen. 
+  As for now, this must be called from a Tool's event handler method.
+
+**type** [//Sketchup::View//] a view object.
+\\ \\
+
+
+= Layout and Style
+
+Layout comprises all properties that influence position and size of widgets. If the window is resized, the layout will be recreated.
+Style includes all properties for the visual appearance.
+Layout and Style can be assigned to individual widgets or to the window where they will serve as theme for specific widget type or for all widgets.
+The priority of properties is //widget instance: hash[widget_state] **>** hash **>** window instance hash[widget_type] **>** hash **>** default//.
+The layout properties are as follows:
+  * :position [//:relative, :absolute//] Whether the position will be measured as distance from the parent element's upper left corner or from the previous sibling.
+  * :left [//Fixnum//] The distance from the previous sibling or parent element.
+  * :top [//Fixnum//] The distance from the previous sibling or parent element.
+  * :align [//:left, :center, :right//] Only for absolutely positioned elements, where it should be aligned within the parent element.
+  * :valign [//:top, :middle, :bottom//] Only for absolutely positioned elements, where it should be aligned within the parent element.
+  * :flow [//:horizontal, :vertical//] Only for containers, whether contained elements with relative positions should be stacked horizontally or vertically.
+  * :width [//Fixnum//]
+  * :minWidth [//Fixnum//]
+  * :maxWidth [//Fixnum//]
+  * :height [//Fixnum//]
+  * :minHeight [//Fixnum//]
+  * :maxHeight [//Fixnum//]
+The style properties are as follows:
+  * :backgroundColor [//Sketchup::Color//]
+  * :borderRadius [//Numeric, Array(Numeric*4)//]
+  * :borderColor [//Sketchup::Color, Array(Sketchup::Color*4)//]
+  * :borderWidth [//Numeric//] 0..10
+  * :borderStyle [//"", ".", "-", "_", "-.-"//]
+  * :shadowColor [//Sketchup::Color//] experimental
+  * :shadowWidth [//Numeric//] 0..10 experimental
+  * :textColor [//Sketchup::Color//]
+  * :textShadow [//Boolean//]
+  * :textShadowColor [//Sketchup::Color//]
+  * :textShadowOffset [//Geom::Vector3d, Array(Numeric*3)//]
+  * :textShadowRadius [//0, 1//]
+The following color names can be used to make the style match system colors:
+  * :white
+  * :gray
+  * :black
+  * :transparent
+  * :Window
+  * :ThreeDHighlight
+  * :ThreeDLightShadow
+  * :ButtonFace, :ThreeDFace
+  * :ButtonShadow, :ThreeDShadow
+  * :ThreeDDarkShadow
+  * :WindowText
+
+      
+= Private Methods 
+
+
+{{{
+OnScreen::Widget.draw_box(view, pos, size, style)
+}}}
+Draw a styled box.
+This is a geometric primitive that can be used to build most widgets.
+
+**view** [//Sketchup::View//]
+
+**pos** [//Geom::Point3d//] (absolute) Position where to draw the widget on the screen.
+
+**size** [//Array//] Width and Height of space to fill.
+
+**style** [//Hash//] (optional) Style with CSS-like properties.
+\\ \\
+
+
+{{{
+OnScreen::Widget.draw_text(view, pos, text, style)
+}}}
+Draw a styled text.
+This is mainly a wrapper for View.draw_text which does not accept a text color.
+
+**view** [//Sketchup::View//]
+
+**pos** [//Geom::Point3d//] (absolute) Position where to draw the widget on the screen.
+
+**text** [//String//] the text.
+
+**style** [//Hash//] (optional) Style with CSS-like properties.
+\\ \\

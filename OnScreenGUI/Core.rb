@@ -20,10 +20,10 @@ Usage:        * Create a Tool (for input events and the ability to draw on scree
                 button = AE::GUI::OnScreen::Button.new()
                 window.add(button)
               * Call the window.draw method from within the Tool's draw method,
-                and call the window.event method from within the Tool's event methods.
+                and call the window.trigger(event, pos) method from within the Tool's event methods.
         
-Version:      0.1
-Date:         07.08.2012
+Version:      0.1.2
+Date:         21.08.2012
 
 =end
 
@@ -289,7 +289,7 @@ class AE::GUI::OnScreen::Widget
   #   Style supports these properties:
   #   * +backgroundColor+ [Sketchup::Color]
   #   * +borderRadius+    [Numeric, Array(Numeric,Numeric,Numeric,Numeric)]
-  #   * +borderColor+     [Numeric, Array(Numeric,Numeric,Numeric,Numeric)]
+  #   * +borderColor+     [Sketchup::Color, Array(Sketchup::Color,Sketchup::Color,Sketchup::Color,Sketchup::Color)]
   #   * +borderWidth+     [Numeric] 0..10
   #   * +borderStyle+     [String] of view.line_stipple
   #   * +shadowColor+     [Sketchup::Color]

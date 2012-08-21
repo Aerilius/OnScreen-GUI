@@ -20,11 +20,11 @@ class AE::GUI::OnScreen::Button < AE::GUI::OnScreen::Widget
     :disabled => {:backgroundColor => Sketchup::Color.new("green")}
   }
 
-  def initialize(text="", hash={})
-    hash[:width] ||= text.split(/\n/).inject(0){|l,s| s.length>l ? s.length : l} * 10 + 20
-    hash[:height] ||= (text.scan(/\n/).length+1) * 15 + 10
+  def initialize(label="", hash={})
+    hash[:width] ||= label.split(/\n/).inject(0){|l,s| s.length>l ? s.length : l} * 10 + 20
+    hash[:height] ||= (label.scan(/\n/).length+1) * 15 + 10
     super(hash)
-    @data = {:text => text}
+    @data = {:label => label}
     @state = :normal
   end
 
@@ -49,7 +49,7 @@ class AE::GUI::OnScreen::Button < AE::GUI::OnScreen::Widget
     }
     reflection_style = deep_merge(style, reflection_style)
     draw_box(view, pos, [size[0], 0.5*size[1]], reflection_style)
-    draw_text(view, pos+[10,4,0], @data[:text], style)
+    draw_text(view, pos+[10,4,0], @data[:label], style)
     # TODO: where/when/how is it best to reset the state
     # if the cursor isn't anymore over the element?
     @state = :normal
