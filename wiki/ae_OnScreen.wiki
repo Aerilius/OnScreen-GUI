@@ -1,7 +1,8 @@
 This is a framework for defining GUI elements using the SketchUp OpenGL drawing methods.
 It allows placing widgets in a nested, dynamic layout and styling them with CSS-like properties.
 An example implementation can be found in TestTool.rb / AE::GUI::OnScreen::TestTool.
-<img src="TestTool_screenshot1.png" alt="some widgets shown by TestTool.rb" /> 
+
+{{../raw/b2823ab688cd/wiki/TestTool_screenshot1.png|some widgets shown by TestTool.rb}}
 
 
 = Public Methods
@@ -13,19 +14,42 @@ OnScreen::Widget.new(hash)
 OnScreen::Container.new(hash)
 }}}
 {{{
-OnScreen::Button.new(label, hash)
+OnScreen::Button.new(label, hash, block)
 }}}
 {{{
-OnScreen::Checkbox.new(checked, label, hash)
+OnScreen::ToggleButton.new(pressed, label, hash, block)
 }}}
-This creates various widgets. Later, a block could be added to some widgets.
+{{{
+OnScreen::Checkbox.new(checked, label, hash, block)
+}}}
+{{{
+OnScreen::Radio.new(checked, label, hash, block)
+}}}
+{{{
+OnScreen::RadioButtonGroup.new(selected, labels, hash, block)
+}}}
+{{{
+OnScreen::Text.new(text, hash)
+}}}
+{{{
+OnScreen::Separator.new(hash)
+}}}
+This creates various widgets. A block could be attached to some widgets.
 
 **label** [//String//] The label of the widget.
 
-**checked** [//Boolean//] The checked status of a checkbox / radio button.
+**checked**, **pressed** [//Boolean//] The checked status of a checkbox / radio button.
+
+**selected** [//Fixnum//] The index of the selected item of an options group.
+
+**labels**, **options** [//Array(String)//] An array of labels for an options group
+
+**text** [//String//] The text of a text element.
 
 **hash** [Hash] Optionally CSS-properties for layout and style. 
   If incomplete or not given, properties of the window or default properties will be taken.
+
+**block** [//Proc//] A block that is called on change. It receives the new value (Boolean, label/String).
 \\ \\
 
 
@@ -56,7 +80,7 @@ This sets an event handler for a widget.
 
 **type** [Symbol] a Symbol indicating the type of event (//:click//, //:mouseOver//, ...?).
 
-**block** [Symbol] a code block to execute when the event is triggered.
+**block** [Proc] a code block to execute when the event is triggered.
 \\ \\
 
 
@@ -102,9 +126,9 @@ OnScreen::Window.trigger(type, pos)
 Triggers an event on the window, which will forwarded the event to the contained elements.
   As for now, this must be called from a Tool's event handler method.
 
-**type** [//Symbol//] a Symbol indicating the type of event (//:click//, //:mouseOver//, ...?).
+**type** [//Symbol//] a Symbol indicating the type of event (//:mousedown//, //:mouseup//, //:click// (deprecated), //:move//, ...?).
 
-**pos** [//Geom::Point3d//] a relative position to the widget's/window's upper left corner.
+**pos** [//Geom::Point3d//] a relative position to the window's upper left corner.
 \\ \\
 
 
@@ -112,7 +136,7 @@ Triggers an event on the window, which will forwarded the event to the contained
 OnScreen::Window.draw(view)
 }}}
 Draws the window and all contained widgets onto the screen. 
-  As for now, this must be called from a Tool's event handler method.
+  As for now, this must be called from a Tool's draw handler method.
 
 **type** [//Sketchup::View//] a view object.
 \\ \\
@@ -123,45 +147,64 @@ Draws the window and all contained widgets onto the screen.
 Layout comprises all properties that influence position and size of widgets. If the window is resized, the layout will be recreated.
 Style includes all properties for the visual appearance.
 Layout and Style can be assigned to individual widgets or to the window where they will serve as theme for specific widget type or for all widgets.
-The priority of properties is //widget instance: hash[widget_state] **>** hash **>** window instance hash[widget_type] **>** hash **>** default//.
+
+The cascade of priorities is //widget instance: hash[widget_state] **>** hash **>** window instance hash[widget_type] **>** hash **>** default//.
+
+If Symbols (or Strings) are allowed, the will be interpreted as percent of the container's available space and for padding as percent of the element's size. Padding is – different from original CSS – defined as the inner spacing inside width/height, not outside.
+
 The layout properties are as follows:
-  * :position [//:relative, :absolute//] Whether the position will be measured as distance from the parent element's upper left corner or from the previous sibling.
-  * :left [//Fixnum//] The distance from the previous sibling or parent element.
-  * :top [//Fixnum//] The distance from the previous sibling or parent element.
-  * :align [//:left, :center, :right//] Only for absolutely positioned elements, where it should be aligned within the parent element.
-  * :valign [//:top, :middle, :bottom//] Only for absolutely positioned elements, where it should be aligned within the parent element.
-  * :flow [//:horizontal, :vertical//] Only for containers, whether contained elements with relative positions should be stacked horizontally or vertically.
-  * :width [//Fixnum//]
-  * :minWidth [//Fixnum//]
-  * :maxWidth [//Fixnum//]
-  * :height [//Fixnum//]
-  * :minHeight [//Fixnum//]
-  * :maxHeight [//Fixnum//]
+  * ##:position## [//:relative, :absolute//] Whether the position will be measured as distance from the the previous sibling or from parent element's upper left corner.
+  * ##:top## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:right## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:bottom## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:left## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:marginTop## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:marginRight## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:marginBottom## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:marginLeft## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:paddingTop## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:paddingRight## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:paddingBottom## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:paddingLeft## [//Fixnum, Symbol//] The distance from a sibling or parent element.
+  * ##:align## [//:left, :center, :right//] Where contained elements should be aligned horizontally (only for Containers).
+  * ##:valign## [//:top, :middle, :bottom//] Where contained elements should be aligned vertically (only for Containers).
+  * ##:orientation## [//:horizontal, :vertical//] Only for containers, whether contained elements with relative positions should be stacked horizontally or vertically.
+  * ##:width## [//Fixnum, Symbol//]
+  * ##:minWidth## [//Fixnum//]
+  * ##:maxWidth## [//Fixnum//]
+  * ##:height## [//Fixnum, Symbol//]
+  * ##:minHeight## [//Fixnum//]
+  * ##:maxHeight## [//Fixnum//]
+
 The style properties are as follows:
-  * :backgroundColor [//Sketchup::Color//]
-  * :borderRadius [//Numeric, Array(Numeric*4)//]
-  * :borderColor [//Sketchup::Color, Array(Sketchup::Color*4)//]
-  * :borderWidth [//Numeric//] 0..10
-  * :borderStyle [//"", ".", "-", "_", "-.-"//]
-  * :shadowColor [//Sketchup::Color//] experimental
-  * :shadowWidth [//Numeric//] 0..10 experimental
-  * :textColor [//Sketchup::Color//]
-  * :textShadow [//Boolean//]
-  * :textShadowColor [//Sketchup::Color//]
-  * :textShadowOffset [//Geom::Vector3d, Array(Numeric*3)//]
-  * :textShadowRadius [//0, 1//]
+  * ##:backgroundColor## [//Sketchup::Color//]
+  * ##:borderRadius## [//Numeric, Symbol, Array(Numeric*4)//] If symbol, it will be interpreted as percent of the element's smaller dimension (width/height).
+  * ##:borderColor## [//Sketchup::Color, Array(Sketchup::Color*4)//]
+  * ##:borderWidth## [//Numeric, Array(Numeric*4)//] 0..10
+  * ##:borderStyle## [//String, , Array(String*4)//] "", ".", "-", "_", "-.-"
+  * ##:shadowColor## [//Sketchup::Color//] experimental
+  * ##:shadowWidth## [//Numeric//] 0..10 experimental
+  * ##:textColor## [//Sketchup::Color//]
+    IMPORTANT! Setting :textColor or :textShadow triggers View.draw and thus an endless draw loop! No workaround known yet.
+  * ##:textShadow## [//Boolean//]
+  * ##:textShadowColor## [//Sketchup::Color//]
+  * ##:textShadowOffset## [//Geom::Vector3d, Array(Numeric*3)//]
+  * ##:textShadowRadius## [//0, 1//] Allows 1px outlines around the text.
+
 The following color names can be used to make the style match system colors:
-  * :white
-  * :gray
-  * :black
-  * :transparent
-  * :Window
-  * :ThreeDHighlight
-  * :ThreeDLightShadow
-  * :ButtonFace, :ThreeDFace
-  * :ButtonShadow, :ThreeDShadow
-  * :ThreeDDarkShadow
-  * :WindowText
+  * ##:white##
+  * ##:gray##
+  * ##:black##
+  * ##:red##
+  * ##:transparent##
+  * ##:foreGround## The edge color.
+  * ##:Window##
+  * ##:ThreeDHighlight##
+  * ##:ThreeDLightShadow##
+  * ##:ButtonFace##, ##:ThreeDFace##
+  * ##:ButtonShadow##, ##:ThreeDShadow##
+  * ##:ThreeDDarkShadow##
+  * ##:WindowText##
 
       
 = Private Methods 

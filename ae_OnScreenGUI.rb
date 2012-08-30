@@ -22,8 +22,8 @@ Usage:        * Create a Tool (for input events and the ability to draw on scree
               * Call the window.draw method from within the Tool's draw method,
                 and call the window.event method from within the Tool's event methods.
               
-Version:      0.2
-Date:         08.08.2012
+Version:      0.2.0
+Date:         30.08.2012
 
 =end
 
@@ -32,14 +32,18 @@ Date:         08.08.2012
 module AE
   module GUI
     module OnScreen
+      def self.reload
+        dir = File.join(File.dirname(__FILE__), "OnScreenGUI")
+        #load File.join(dir, "Core.rb")
+        Dir.glob( File.join(dir, '*.{rb,rbs}') ).
+          #find_all{|f| !f[/Core\.rbs?$/] }.
+          each{|f| load f }
+      end
     end
   end
 end
 
-dir = File.join(File.dirname(__FILE__), "OnScreenGUI")
-#load File.join(dir, "Core.rb")
-Dir.glob( File.join(dir, '*.{rb,rbs}') ).
-  #find_all{|f| !f[/Core\.rbs?$/] }.
-  each{|f| load f }
 
+
+AE::GUI::OnScreen.reload
 
