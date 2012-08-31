@@ -224,7 +224,8 @@ class OnScreen::Widget
   protected
 
 
-  attr_accessor :parent, :window, :state, :data, :style, :layout
+  attr_accessor :parent, :window, :state, :data
+  attr_reader :style, :layout
 
 
   # A callback when the widget has been included in a container widget.
@@ -274,7 +275,6 @@ class OnScreen::Widget
   # @return Probably a callback, or Boolean whether event handler has been triggered.
   # TODO: additional view param necessary?
   def trigger(type, data)
-#puts "#{self.inspect} triggered for #{type}" if type==:click
     # Example: Check if the widget has a sensitive area that includes pos.
     # Then set the widget state for styling or call an action.
     case type
@@ -349,7 +349,7 @@ class OnScreen::Widget
     return @currentoutersize unless @currentoutersize.empty? || @window && !@window.changed?
     pw, ph = *psize
     # Margin
-    m = @layout[:margin]
+    m = @layout[:margin] || 0
     m = [m]*4 unless m.is_a?(Array) && m.length == 4
     mt = @layout[:marginTop] || m[0]
     mr = @layout[:marginRight] || m[1]
@@ -428,6 +428,8 @@ class OnScreen::Widget
         r = size.min * r.to_s.to_f/100.0 if r.is_a?(Symbol) || r.is_a?(String)
         # radius can't be bigger than half the width/height
         r = radius[i] = [size[0]/2, size[1]/2, r].min.to_i
+        # TODO: This is not logical, but makes odd-width borders better fit on the pixel grid if there is no anti-alias
+        # r += (i-1).remainder(2)
         # create segments
         segments = [2, r/3+2].max
         angle = 0.5*Math::PI/segments
@@ -625,14 +627,6 @@ class OnScreen::Container < OnScreen::Widget
 
 
 
-  # This is not needed since default containers serve only for layout.
-  # If needed, subclass it. 
-  # TODO: How does super work with subclassing? Can we call superclass OnScreen::Widget.trigger?
-  # @private # TODO: or better "undefine" the method? Would this break subclassing?
-  def trigger(type, data) # TODO: remove or leave, DEBUG
-  end
-
-
   # Add the given widget(s) to this container.
   #
   # @param [Array] widgets One or more widgets.
@@ -688,7 +682,7 @@ class OnScreen::Container < OnScreen::Widget
     h = psize[1]*h.to_s.to_f/100.0 if h.is_a?(Symbol) || h.is_a?(String)
     # Otherwise get the size caused by contained widgets.
     if w.nil? || h.nil?
-      p = @layout[:padding]
+      p = @layout[:padding] || 0
       p = [p]*4 unless p.is_a?(Array) && p.length == 4
       pt = @layout[:paddingTop] || p[0]
       pr = @layout[:paddingRight] || p[1]
@@ -812,7 +806,7 @@ class OnScreen::Container < OnScreen::Widget
       cb = ph * cb.to_s.to_f/100.0 if cb.is_a?(Symbol) || cb.is_a?(String)
       cl = pw * cl.to_s.to_f/100.0 if cl.is_a?(Symbol) || cl.is_a?(String)
       # Margin
-      m = child.layout[:margin]
+      m = child.layout[:margin] || 0
       m = [m]*4 unless m.is_a?(Array) && m.length == 4
       mt = child.layout[:marginTop] || m[0]
       mr = child.layout[:marginRight] || m[1]
