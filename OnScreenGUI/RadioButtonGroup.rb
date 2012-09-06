@@ -34,55 +34,52 @@ class OnScreen::RadioButtonGroup < OnScreen::Container
       hash[:height] ||= (labels.inject(0){|max,label| [label.scan(/\n/).length, max].max }+1) * 15 + 10
     end
     hash[:align] = :left
+    hash[:padding] = 0
     super(hash)
     @data[:labels] = labels
     @data[:block] = block if block_given?
     @value = selected
-  end
 
-
-  # Wait until the merged @style is known, then set :borderRadius.
-  # (This is mainly because borderRadius [0, ?, ?, 0] can not be partly merged, it would only overwrite)
-  def on_added_to_window(window)
-    super
-    orientation = @layout[:orientation]
-    width = (orientation==:horizontal)? @layout[:width]/@data[:labels].length : nil
-    #TODO: @layout[:width] should be Numeric here, or convert it; eventually self.size?
-    @data[:labels].each_with_index{|label,i|
-      # If there is borderRadius, split it to the first and last button and keep the intermediate buttons tightly connected.
-      br = @style[:borderRadius]
-      br = [br]*4 unless br.is_a?(Array)
-      # first
-      if i==0
-        br = (orientation==:horizontal)? [br[0], 0, 0, br[3]] : [br[0], br[1], 0, 0]
-      # last
-      elsif i==@data[:labels].length-1
-        br = (orientation==:horizontal)? [0, br[1], br[2], 0] : [0, 0, br[2], br[3]]
-      # middle
-      else
-        br = 0
-      end
-      # Create a ToggleButton with modified style to make sure it aligns nicely with its neighbours.
-      toggle = OnScreen::ToggleButton.new( @value==i, label,
-                 @style.merge({:borderRadius=>br,
-                   :width=>width, 
-                   :left=>0, 
-                   :right=>0, 
-                   :top=>0, 
-                   :bottom=>0, 
-                   :marginTop=>0, 
-                   :marginRight=>0, 
-                   :marginBottom=>0, 
-                   :marginLeft=>0
-                 })
-               )
-      self.add(toggle)
-      toggle.on(:click){
-        self.value=(i) # the RadioButtonGroup's value
-        @data[:block].call(i) if @data.include?(:block)
+    on(:added_to_window){|window|
+      orientation = @layout[:orientation]
+      width = (orientation==:horizontal)? @layout[:width]/@data[:labels].length : nil
+      #TODO: @layout[:width] should be Numeric here, or convert it; eventually self.size?
+      @data[:labels].each_with_index{|label,i|
+        # If there is borderRadius, split it to the first and last button and keep the intermediate buttons tightly connected.
+        br = @style[:borderRadius]
+        br = [br]*4 unless br.is_a?(Array)
+        # first
+        if i==0
+          br = (orientation==:horizontal)? [br[0], 0, 0, br[3]] : [br[0], br[1], 0, 0]
+        # last
+        elsif i==@data[:labels].length-1
+          br = (orientation==:horizontal)? [0, br[1], br[2], 0] : [0, 0, br[2], br[3]]
+        # middle
+        else
+          br = 0
+        end
+        # Create a ToggleButton with modified style to make sure it aligns nicely with its neighbours.
+        toggle = OnScreen::ToggleButton.new( @value==i, label,
+                   @style.merge({:borderRadius=>br,
+                     :width=>width, 
+                     :left=>0, 
+                     :right=>0, 
+                     :top=>0, 
+                     :bottom=>0, 
+                     :marginTop=>0, 
+                     :marginRight=>0, 
+                     :marginBottom=>0, 
+                     :marginLeft=>0
+                   })
+                 )
+        self.add(toggle)
+        toggle.on(:click){
+          self.value=(i) # the RadioButtonGroup's value
+          @data[:block].call(i) if @data.include?(:block)
+        }
       }
+      invalidate_size # force a recalculation of the cached size
     }
-    invalidate_size # force a recalculation of the cached size
   end
 
 

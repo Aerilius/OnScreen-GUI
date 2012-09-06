@@ -19,7 +19,7 @@ class OnScreen::ToggleButton < OnScreen::Button
   def initialize(pressed=true, label="", hash={}, &block)
     hash = hash.dup
     # The togglebutton should be at least as wide that the label fits on it,
-    # (assuming average character widht is 10px), so multiply the longest text line by 10px (changed to 9).
+    # (assuming average character width is 10px), so multiply the longest text line by 10px (changed to 9).
     hash[:width] ||= label.split(/\n/).inject(0){|s,l| l.length>s ? l.length : s} * 9 + 20
     hash[:height] ||= (label.scan(/\n/).length+1) * 15 + 10
     super(label, hash)

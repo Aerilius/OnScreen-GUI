@@ -7,7 +7,9 @@ module AE::GUI
 class OnScreen::TestTool
 
 
-  attr_accessor :window # DEBUG: This accessor is only for debugging.
+  include AE::GUI::OnScreen
+
+
   def initialize
     theme1 = {
       :backgroundColor => Sketchup::Color.new(0,0,0,100),
@@ -19,7 +21,7 @@ class OnScreen::TestTool
       :textShadowColor => Sketchup::Color.new(0,0,0,50),
       :textShadowOffset => [0,0,0],
       :textShadowRadius => 1,
-      :text => {
+      :textbox => {
         :backgroundColor => Sketchup::Color.new(255,255,255,100),
         :textColor => Sketchup::Color.new(0,0,0,200),
         :textShadow => false,
@@ -77,7 +79,7 @@ class OnScreen::TestTool
           :borderColor => [ theme2color.contrast(0.8).gamma(1.4), theme2color.contrast(0.8).gamma(0.6), theme2color.contrast(0.8).gamma(0.4), theme2color.contrast(0.8).gamma(1.2) ],
         },
       },
-      :text => {
+      :textbox => {
         :backgroundColor => AE::Color["white"],
         :textColor => AE::Color["black"],
         :hover => {},
@@ -86,7 +88,7 @@ class OnScreen::TestTool
     }
 
 
-    @window = OnScreen::Window.new({:margin => 7})
+    window.layout=({:margin=>5})
 
 
     button = OnScreen::Button.new("Test (native style)", {:width=>120})
@@ -99,14 +101,15 @@ class OnScreen::TestTool
     radio2 = OnScreen::Radio.new(false, "Radio 2")
     sep2 = OnScreen::Separator.new()
     radiobuttongroup = OnScreen::RadioButtonGroup.new(1, ["Button 1", "Button 2", "Button 3"], {:width=>200})
-    text = OnScreen::Text.new("a short text...")
-    text2 = OnScreen::Text.new("a longer text...\n...over...\n...multiple lines...")
-
+    slider = OnScreen::Slider.new("Slider", [0,45,100], {:width=>250})
+    text = OnScreen::TextBox.new("a short text...")
+    text2 = OnScreen::TextBox.new("a longer text...\n...over...\n...multiple lines...")
     vbox = OnScreen::Container.new({:orientation=>:vertical})
     box = OnScreen::Container.new({:position=>:absolute, :align=>:left, :valign=>:top})
-    @window.add(box)
+    window.add(box)
     box.add(vbox)
-    vbox.add(button, button2, toggle, checkbox1, checkbox2, sep1, radio1, radio2, sep2, radiobuttongroup, text, text2)
+    vbox.add(button, button2, toggle, checkbox1, checkbox2, sep1, radio1, radio2, sep2, radiobuttongroup, slider, text, text2)
+
 
 
     button_ = OnScreen::Button.new("Test (another style)", {:width=>130}.merge(theme1))
@@ -118,14 +121,14 @@ class OnScreen::TestTool
     radio2_ = OnScreen::Radio.new(false, "Radio 2", theme1)
     sep2_ = OnScreen::Separator.new(theme1)
     radiobuttongroup_ = OnScreen::RadioButtonGroup.new(1, ["Button 1", "Button 2", "Button 3"], {:width=>200}.merge(theme1))
-    text_ = OnScreen::Text.new("a short text...", theme1)
-    text2_ = OnScreen::Text.new("a longer text...\n...over...\n...multiple lines...", theme1)
-
+    slider_ = OnScreen::Slider.new("Slider", [0,45,100], theme1.merge({:width=>250}))
+    text_ = OnScreen::TextBox.new("a short text...", theme1)
+    text2_ = OnScreen::TextBox.new("a longer text...\n...over...\n...multiple lines...", theme1)
     vbox_ = OnScreen::Container.new({:orientation=>:vertical, :borderWidth=>1})
     box_ = OnScreen::Container.new({:position=>:absolute, :width=>:"100%", :height=>:"100%", :align=>:center, :valign=>:middle})
-    @window.add(box_)
+    window.add(box_)
     box_.add(vbox_)
-    vbox_.add(button_, toggle_, checkbox1_, checkbox2_, sep1_, radio1_, radio2_, sep2_, radiobuttongroup_, text_, text2_)
+    vbox_.add(button_, toggle_, checkbox1_, checkbox2_, sep1_, radio1_, radio2_, sep2_, radiobuttongroup_, slider_, text_, text2_)
 
 
     button__ = OnScreen::Button.new("Test (another style)", {:width=>130}.merge(theme2))
@@ -137,55 +140,19 @@ class OnScreen::TestTool
     radio2__ = OnScreen::Radio.new(false, "Radio 2", theme2)
     sep2__ = OnScreen::Separator.new(theme2)
     radiobuttongroup__ = OnScreen::RadioButtonGroup.new(1, ["Button 1", "Button 2", "Button 3"], {:width=>200}.merge(theme2))
-    text__ = OnScreen::Text.new("a short text...", theme2)
-    text2__ = OnScreen::Text.new("a longer text...\n...over...\n...multiple lines...", theme2)
-
-    vbox__ = OnScreen::Container.new({:orientation=>:vertical, :align=>:right, :borderWidth=>1})
+    slider__ = OnScreen::Slider.new("Slider", [0,65,100], {:orientation=>:vertical, :height=>250}.merge(theme2))
+    text__ = OnScreen::TextBox.new("a short text...", theme2)
+    text2__ = OnScreen::TextBox.new("a longer text...\n...over...\n...multiple lines...", theme2)
+    vbox__ = OnScreen::Container.new({:orientation=>:vertical, :align=>:right, :borderWidth=>1, :width=>320, :maxWidth=>320})
     box__ = OnScreen::Container.new({:position=>:absolute, :width=>:"100%", :height=>:"100%", :align=>:right, :valign=>:bottom})
-    @window.add(box__)
+    window.add(box__)
     box__.add(vbox__)
-    vbox__.add(button__, toggle__, checkbox1__, checkbox2__, sep1__, radio1__, radio2__, sep2__, radiobuttongroup__, text__, text2__)
-
-
-    @window.layout=({:align=>:left, :valign=>:top, :orientation=>:horizontal})
+    vbox__.add(button__, toggle__, checkbox1__, checkbox2__, sep1__, radio1__, radio2__, sep2__, radiobuttongroup__, slider__, text__, text2__)
 
 
     button.on(:click){|data|
-      UI.messagebox(data[:pos].to_a[0...2].inspect+" clicked within the button") # This should give relative coordinates within button1.
+      UI.messagebox(data[:pos].to_a[0...2].inspect+" clicked within the button.") # This gives relative coordinates within button1.
     }
-  end
-
-
-  def activate(view)
-    view.invalidate
-  end
-
-
-  def deactivate(view)
-    view.invalidate
-  end
-
-
-  def onMouseMove(flags, x, y, view)
-    @window.trigger(:move, {:pos=>[x, y]})
-  end
-
-
-  def onLButtonDown(flags, x, y, view)
-    @window.trigger(:mousedown, {:pos=>[x, y]})
-  end
-
-
-  def onLButtonUp(flags, x, y, view)
-    @window.trigger(:mouseup, {:pos=>[x, y]})
-    @window.trigger(:click, {:pos=>[x, y]})
-  end
-
-
-  def draw(view)
-    # Duration ~ 58ms
-    # puts "drawing"
-    @window.draw(view)
   end
 
 

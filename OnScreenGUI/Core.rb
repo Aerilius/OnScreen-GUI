@@ -22,8 +22,8 @@ Usage:        * Create a Tool (for input events and the ability to draw on scree
               * Call the window.draw method from within the Tool's draw method,
                 and call the window.trigger(event, {:pos, ...}) method from within the Tool's event methods.
         
-Version:      0.2.0
-Date:         30.08.2012
+Version:      0.2.1
+Date:         05.09.2012
 
 =end
 
@@ -33,6 +33,8 @@ module AE
     module OnScreen
 
 require File.join(File.dirname(__FILE__), "Color.rb")
+
+
 
 
 # The main class of the OnScreen toolkit. Everything is a widget.
@@ -137,18 +139,18 @@ class OnScreen::Widget
     @currentsize = []
     @currentoutersize = []
     @currentcontentsize = []
-    # The style includes properties for the visual appearance.
-    @style = {}
-    @remembered_style = {} # We can only build/merge the style, when the widget has been added to a window.
-    self.style=(hash)
-    # The layout includes properties for positioning and sizing.
-    @layout = {}
-    @remembered_layout = {}
-    self.layout=(hash)
     # Hash where any sort of widget-specific data can be stored, optional.
     @data = {}
     # Hash that stores events :type => [block1, block2, ...]
     @events = {}
+    # The style includes properties for the visual appearance.
+    @style = {}
+    # The layout includes properties for positioning and sizing.
+    @layout = {}
+    on(:added_to_window){|window|
+      self.style = hash
+      self.layout = hash
+    }
     # Widget status, one of :normal, :hover, :active or any custom term.
     @state = :normal
   end
@@ -163,6 +165,7 @@ class OnScreen::Widget
   end
 
 
+
   # Set style properties for the visual appearance of the widget.
   # If incomplete, it inherits the style that has been passed to the window widget,
   # and if that was incomplete it takes default properties.
@@ -170,8 +173,17 @@ class OnScreen::Widget
   # @param [Hash] style properties and values
   #
   # @return [Hash] the complete style of the widget
+  #
+  # TODO: Improve inheritance of style and layout.
+  # Inherit styles from all superclasses; type = superclasses.pop
+  #private
+  #def superclasses(object)
+  #  result = [object.class]
+  #  result << result.last.superclass while result.last.superclass
+  #  return result
+  #end
+  #
   def style=(hash={})
-    return @remembered_style = hash if @window.nil?
     type = self.class.name[/[^\:]+$/].downcase.to_sym
     default = @@default_style[:default].merge(@@default_style[type]||{})
     @style = multiple_merge(
@@ -193,7 +205,6 @@ class OnScreen::Widget
   #
   # @return [Hash] the complete layout of the widget
   def layout=(hash={})
-    return @remembered_layout = hash if @window.nil?
     type = self.class.name[/[^\:]+$/].downcase.to_sym
     default = @@default_layout[:default].merge(@@default_layout[type]||{})
     @layout = multiple_merge(
@@ -228,48 +239,13 @@ class OnScreen::Widget
   attr_reader :style, :layout
 
 
-  # A callback when the widget has been included in a container widget.
-  #
-  # @param [OnScreen::Container] the new parent container
-  # @private
-  def on_added(new_parent) # TODO: use normal event system for that??
-  end
-
-
-  # A callback when the widget has been removed from a container widget.
-  #
-  # @param [OnScreen::Container] the old parent container
-  # @private
-  def on_removed(old_parent)
-  end
-
-
-  # A callback when the widget has been included in a window.
-  #
-  # @param [OnScreen::Container] the new window
-  # @private
-  def on_added_to_window(window)
-    self.style=(@remembered_style)
-    self.layout=(@remembered_layout)
-    self.children.each{|widget| widget.window = window; widget.on_added_to_window(window)} if self.is_a? OnScreen::Container
-  end
-
-
-  # A callback when the widget has been removed from a window.
-  #
-  # @param [OnScreen::Container] the old window
-  # @private
-  def on_removed_from_window(old_window)
-  end
-
-
   # Respond to an event.
   # Check if the event occured in a sensitive area and call the event handler.
   #
   # @param [Symbol] type Type of the event. Will be something like click, hover...
   #                                      Or LButtonDown etc.?
   # @param [Array] data Data like the position where the event occured on the widget.
-  #   Position is relative to the widget's top left corner.
+  #   Position is relative to the widget's top left corner. # TODO: without padding!
   #   The widget does not (need to) know its absolute position on screen.
   #
   # @return Probably a callback, or Boolean whether event handler has been triggered.
@@ -285,17 +261,19 @@ class OnScreen::Widget
       #invalidate if @state != :active
       #@state = :active
       #UI.start_timer(0.1, false){@state=:hover;invalidate}
-    when :mousedown then # TODO
+    when :mousedown then
       invalidate if @state != :active
       @state = :active
-    when :mouseup then # TODO
+    when :mouseup then
       invalidate if @state == :active
       @state = :hover
     end
     return false unless @events.include?(type)
     # A widget can specify if it wants to give custom data into the block, otherwise the event's data will be given.
-    args = data.include?(:args) ? data[:args] : [data]
-    @events[type].each{|b| b.call(*args)}
+    #args = ( data.respond_to?("include?") && data.include?(:args) )? data[:args] : [data]
+    #args = ( data.include?(:args) )? data[:args] : [data] rescue [data]
+    #@events[type].each{|b| b.call(*args)}
+    @events[type].each{|b| b.call(data)}
     return true
   end
 
@@ -428,10 +406,8 @@ class OnScreen::Widget
         r = size.min * r.to_s.to_f/100.0 if r.is_a?(Symbol) || r.is_a?(String)
         # radius can't be bigger than half the width/height
         r = radius[i] = [size[0]/2, size[1]/2, r].min.to_i
-        # TODO: This is not logical, but makes odd-width borders better fit on the pixel grid if there is no anti-alias
-        # r += (i-1).remainder(2)
         # create segments
-        segments = [2, r/3+2].max
+        segments = [2, r/3+2].max.to_i
         angle = 0.5*Math::PI/segments
         # offset to move the corner points to the rotation center
         offset = [ (i%3==0?1:-1)*r,  (i<2?1:-1)*r,  0 ]
@@ -444,57 +420,79 @@ class OnScreen::Widget
         }
       }
     end
-    # Create shadow behind the box by overlaying transparent polylines.
-    # Only for SketchUp versions that support transparent color drawing.
-    # TODO: since we draw a border, curves have gaps and look ugly (like stars).
-    #   Alternatively, add an offset to the rectangle and draw a filled polygon.
-    if !style[:shadowWidth].nil? && style[:shadowWidth] != 0 && @@supportsAlpha
-      view.drawing_color = style[:shadowColor]
-      view.line_stipple = ""
-      (style[:shadowWidth]/2).times{|i| 2*i
-        view.line_width = 2*i
-        view.draw2d(GL_LINE_LOOP, rectangle)
-      }
-    end
-    # Draw the background.
-    if !style[:backgroundColor].nil? && style[:backgroundColor] != @@color[:transparent]
-      view.drawing_color = style[:backgroundColor]
-      view.draw2d(GL_POLYGON, rectangle)
-    end
-    # Draw the border.
-    if !style[:borderColor].nil? && style[:borderColor] != @@color[:transparent] && !style[:borderWidth].nil? && (style[:borderWidth].is_a?(Array) ? style[:borderWidth][0] : style[:borderWidth]) > 0
-      # If all border properties are the same, just draw the rectangle.
-      unless style[:borderColor].is_a?(Array) || style[:borderWidth].is_a?(Array) || style[:borderStyle].is_a?(Array)
-        view.line_width = style[:borderWidth]
-        view.line_stipple = style[:borderStyle]
-        view.drawing_color = style[:borderColor]
-        view.draw2d(GL_LINE_LOOP, rectangle)
-       # If widths/colors/styles are different for top, right, bottom, left,  split the rectangle into 4 parts (top, right, bottom, left).
-      else
-        border_color = style[:borderColor]
-        border_color = [border_color]*4 unless border_color.is_a?(Array)
-        border_width = style[:borderWidth]
-        border_width = [border_width]*4 unless border_width.is_a?(Array)
-        border_style = style[:borderStyle]
-        border_style = [border_style]*4 unless border_style.is_a?(Array)
-        border = rectangle.dup
-        bl, b = 0, []
-        4.times{|i|
-          next if border_width[i] == 0
-          bl = 1 # amount of segments that belong to one side (top, right, bottom, left)
-          bl += ([2, radius[i-1]/3+2].max/2.0).floor if !style[:borderRadius].nil? && style[:borderRadius] != 0
-          (border.push(*border.slice!(0,bl)); border.push(border[0])) if i==0 # This half of the first corner belong to the last border part.
-          bl += ([2, radius[i]/3+2].max/2.0).ceil if !style[:borderRadius].nil? && style[:borderRadius] != 0
-          # points of one side
-          b = border.slice!(0, bl)
-          b << border[0]
-          view.drawing_color = border_color[i]
-          view.line_width = border_width[i]
-          view.line_stipple = border_style[i]
-          view.draw2d(GL_LINE_STRIP, b)
+    draw_polygon(view, pos, rectangle, style)
+  end
+
+
+  # Draw a styled polygon or polygons.
+  #
+  # @param [Sketchup::View] view
+  # @param [Array] pos (absolute) +Position+ where to draw the widget on the screen.
+  # @param [Array<Geom::Point3d>, Array<Array<Geom::Point3d>>] points An array of points, or arrays containing points.
+  # @param [Hash] style (optional) +Style+ with CSS-like properties.
+  #   Style supports these properties:
+  #   * +backgroundColor+ [Sketchup::Color]
+  #   * +borderRadius+    [Numeric, Array(Numeric,Numeric,Numeric,Numeric)]
+  #   * +borderColor+     [Sketchup::Color, Array(Sketchup::Color,Sketchup::Color,Sketchup::Color,Sketchup::Color)]
+  #   * +borderWidth+     [Numeric, Array(Numeric,Numeric,Numeric,Numeric)] 0..10
+  #   * +borderStyle+     [String, Array(String,String,String,String)] of view.line_stipple
+  #   * +shadowColor+     [Sketchup::Color]
+  #   * +shadowWidth+     [Numeric] 0..10
+  #
+  # @return [Sketchup::View]
+  def draw_polygon(view, pos, points, style=@@default_style[:default])
+    pos = Geom::Point3d.new(pos) # make sure that pos has no more than 2...3 values
+    polygons = (points[0].is_a?(Array))? points : [points]
+    polygons.each{|polygon| # TODO
+      # Create shadow behind the polygon by overlaying transparent polylines.
+      # Only for SketchUp versions that support transparent color drawing.
+      # TODO: Since we decided to draw a border, curves have gaps and look ugly (like stars).
+      #   Alternatively, add an offset to the polygon and draw a filled polygon.
+      if !style[:shadowWidth].nil? && style[:shadowWidth] != 0 && @@supportsAlpha
+        view.drawing_color = style[:shadowColor]
+        view.line_stipple = ""
+        (style[:shadowWidth]/2).times{|i| 2*i
+          view.line_width = 2*i
+          view.draw2d(GL_LINE_LOOP, polygon)
         }
       end
-    end
+      # Draw the background.
+      if !style[:backgroundColor].nil? && style[:backgroundColor] != @@color[:transparent]
+        view.drawing_color = style[:backgroundColor]
+        view.draw2d(GL_POLYGON, polygon)
+      end
+      # Draw the border.
+      if !style[:borderColor].nil? && style[:borderColor] != @@color[:transparent] && !style[:borderWidth].nil? && (style[:borderWidth].is_a?(Array) ? style[:borderWidth].max : style[:borderWidth]) > 0
+        # If all border properties are the same, just draw the polygon.
+        unless style[:borderColor].is_a?(Array) || style[:borderWidth].is_a?(Array) || style[:borderStyle].is_a?(Array)
+          view.line_width = style[:borderWidth]
+          view.line_stipple = style[:borderStyle]
+          view.drawing_color = style[:borderColor]
+          view.draw2d(GL_LINE_LOOP, polygon)
+         # If widths/colors/styles are different for top, right, bottom, left,  split the polygon into 4 parts (top, right, bottom, left).
+        else
+          border_color = style[:borderColor]
+          border_color = [border_color]*4 unless border_color.is_a?(Array)
+          border_width = style[:borderWidth]
+          border_width = [border_width]*4 unless border_width.is_a?(Array)
+          border_style = style[:borderStyle]
+          border_style = [border_style]*4 unless border_style.is_a?(Array)
+          # Get each side of the polygon.
+          # Find the most top-left (top-right, bottom-right, bottom-left) corner and split the polygon.
+          l = polygon.length
+          corners = [Geom::Vector3d.new(1,-1,0), Geom::Vector3d.new(1,1,0), Geom::Vector3d.new(-1,1,0), Geom::Vector3d.new(-1,-1,0)]. # topright, bottomright, bottomleft, topleft
+            collect{|d| polygon.index( polygon.max{|a,b| d%a.to_a <=> d%b.to_a} ) }
+          corners.each_with_index{|c1,i|
+            c0 = corners[i-1]
+            side = (c0 < c1)? polygon.slice(c0..c1) : polygon.slice(c0..l).concat(polygon.slice(0..c1))
+            view.drawing_color = border_color[i]
+            view.line_width = border_width[i]
+            view.line_stipple = border_style[i]
+            view.draw2d(GL_LINE_STRIP, side)
+          }
+        end
+      end
+    }
   end
 
 
@@ -590,7 +588,7 @@ class OnScreen::Widget
       new = hashes.shift.
         # This removes properties that are not in the first hash, except if the key's value is a Hash (that contains properties).
         # Applying value=nil allows resetting properties to default.
-        reject{|k,v| !result.keys.include?(k) && !v.is_a?(Hash) || v.nil? }
+        reject{|k,v| !result.keys.include?(k) && !v.is_a?(Hash)}# || v.nil? } TODO: remove this
       result.merge!(new)
     }
     return result
@@ -598,6 +596,7 @@ class OnScreen::Widget
 
 
 end
+
 
 
 
@@ -623,8 +622,13 @@ class OnScreen::Container < OnScreen::Widget
     # List of widgets that are contained in this container (children).
     @children = []
     super(hash)
+    on(:added_to_window){
+      self.children.each{|widget|
+        widget.window = window
+        widget.trigger(:added_to_window, self.window)
+      }
+    }
   end
-
 
 
   # Add the given widget(s) to this container.
@@ -633,17 +637,18 @@ class OnScreen::Container < OnScreen::Widget
   #
   # @return [OnScreen::Widget, Array] If one widget given, it is returned.
   # If several widgets given, an array of them is returned.
-  # TODO: do all nested widgets get a @window reference?
+  # TODO: Do all nested widgets get a @window reference?
   # TODO: If a widget has already a parent, remove it, or allow the widget to appear as duplicates?
   # GTK would give a warning. On the other side, it works, and it sounds cool to have clones that behave synchronously.
   def add(*widgets)
     widgets.each{|widget|
+      next unless widget.is_a?(Widget)
       @children << widget
-      widget.on_removed(widget.parent) unless widget.parent.nil?
-      widget.on_added(self)
+      widget.trigger(:removed, widget.parent) unless widget.parent.nil?
+      widget.trigger(:added, self)
       widget.parent = self
       widget.window = self.window unless self.window.nil?
-      widget.on_added_to_window(self.window) unless self.window.nil?
+      widget.trigger(:added_to_window, self.window) unless self.window.nil?
     }
     return widgets.length==1? widgets[0] : widgets
   end
@@ -657,11 +662,12 @@ class OnScreen::Container < OnScreen::Widget
   # If several widgets given, an array of them is returned.
   def remove(*widgets)
     widgets.each{|widget|
+      next unless widget.is_a?(Widget)
       @children.delete(widget)
       widget.parent = nil
-      widget.on_removed(self)
+      widget.trigger(:removed, self)
       widget.window = nil
-      widget.on_removed_from_window(self.window) unless self.window.nil?
+      widget.trigger(:removed_from_window, self.window) unless self.window.nil?
     }
     return widgets.length==1? widgets[0] : widgets
   end
@@ -776,18 +782,18 @@ class OnScreen::Container < OnScreen::Widget
     pl = pw * pl.to_s.to_f/100.0 if pl.is_a?(Symbol) || pl.is_a?(String)
     # Indent by padding, increase stacking order (which is influenced by zIndex)
     ppos += [pl, pt, 1]
-    psize[0] -= pl + pr
-    psize[1] -= pt + pb
+    psize[0] = pw -= pl + pr
+    psize[1] = ph -= pt + pb
     # Total width and height of children.
     tw, th = *self.contentsize(psize)
     # Get the insertion point for relatively positioned elements
     relpos = Geom::Vector3d.new(0,0,0)
     case @layout[:align]
-      when :center then relpos.x = pw/2-tw/2
+      when :center then relpos.x = (@layout[:orientation] == :horizontal)? pw/2-tw/2 : pw/2
       when :right then relpos.x = pw-tw
     end
     case @layout[:valign]
-      when :middle then relpos.y = ph/2-th/2
+      when :middle then relpos.y = (@layout[:orientation] == :vertical)? ph/2-th/2 : ph/2
       when :bottom then relpos.y = ph-th
     end
     # loop over all contained widgets and set their position
@@ -822,8 +828,10 @@ class OnScreen::Container < OnScreen::Widget
       if child.layout[:position] == :relative
         cpos += relpos
         if @layout[:orientation] == :horizontal
+          cpos += [0, -ch/2, 0] if @layout[:valign] == :middle # only in that case, relpos is in middle of widget
           relpos += [cl + ml + cw + mr + cr, 0, 0]
         else @layout[:orientation] == :vertical
+          cpos += [-cw/2, 0, 0] if @layout[:align] == :center # only in that case, relpos is in center of widget
           relpos += [0, ct + mt + ch + mb + cb, 0]
         end
       end
@@ -851,6 +859,54 @@ class OnScreen::Container < OnScreen::Widget
 
 
 end
+
+
+
+
+# Horizontal box container. All contained widgets will be aligned horizontally.
+class OnScreen::HBox < OnScreen::Container
+
+  @@default_style[:hbox] = {
+    :backgroundColor => nil,
+    :borderColor => nil
+  }
+
+  @@default_layout[:hbox] = {
+    :position=>:relative,
+    :orientation => :horizontal,
+  }
+
+  def initialize(hash={})
+    hash[:orientation] = :horizontal
+    super(hash)
+  end
+
+end
+
+
+
+
+# Vertical box container. All contained widgets will be aligned vertically.
+class OnScreen::VBox < OnScreen::Container
+
+  @@default_style[:vbox] = {
+    :backgroundColor => nil,
+    :borderColor => nil
+  }
+
+  @@default_layout[:vbox] = {
+    :position=>:relative,
+    :orientation => :vertical,
+  }
+
+  def initialize(hash={})
+    hash[:orientation] = :vertical
+    super(hash)
+  end
+
+end
+
+
 
 
     end # module OnScreen

@@ -17,7 +17,7 @@ class OnScreen::Checkbox < OnScreen::Widget
   def initialize(checkd=true, label="", hash={}, &block)
     hash = hash.dup
     # The widget should be at least as wide that the label fits on it
-    # (assuming average character widht is 10px), so multiply the longest text line by 10.
+    # (assuming average character width is 10px), so multiply the longest text line by 10.
     hash[:width] ||= label.split(/\n/).inject(0){|s,l| l.length>s ? l.length : s} * 9 + 25
     hash[:height] ||= (label.scan(/\n/).length+1) * 15 + 10
     super(hash)
@@ -30,8 +30,10 @@ class OnScreen::Checkbox < OnScreen::Widget
   def trigger(type, data)
     # No need to check pos since the whole checkbox is sensitive for events.
     # No need to distinguish between several sensitive areas of the widget.
-    @checked = !@checked if type == :mouseup
-    data[:args] = [@checked]
+    if type == :mouseup || type == :change
+      @checked = !@checked
+      data[:args] = [@checked]
+    end
     super(type, data)
   end
 

@@ -9,7 +9,7 @@ module AE::GUI
 class OnScreen::Window < OnScreen::Container
 
 
-  attr_accessor :style, :changed, :model, :widgets, :view
+  attr_accessor :style, :changed, :model, :widgets
   alias_method :changed?, :changed
 
 
@@ -24,6 +24,10 @@ class OnScreen::Window < OnScreen::Container
     @widgets = []
     @view = @model.active_view
     @viewport = nil
+    # Holds a reference to the widget that is currently dragged.
+    @dragging = nil
+    # Holds a reference to the widget that has currently focussed (would be required for keyboard input, not implemented yet).
+    @focus = nil
   end
 
 
@@ -41,8 +45,21 @@ class OnScreen::Window < OnScreen::Container
   #                                      Or LButtonDown etc.?
   # @param [Hash] data
   def trigger(type, data)
+    #data[:pos] = Geom::Point3d.new(data[:pos]) if data[:pos] # TODO: remove
+    # dragging
+    if type == :move && !@dragging.nil?
+      dragged = @widgets.find{|hash| hash[:widget] == @dragging}
+      relpos = data[:pos] - dragged[:pos].to_a
+      return @dragging.trigger(type, data.merge({:pos=>relpos}))
+    elsif type == :mouseup && !@dragging.nil?
+      dragged = @widgets.find{|hash| hash[:widget] == @dragging}
+      relpos = data[:pos] - dragged[:pos].to_a
+      @dragging.trigger(type, data.merge({:pos=>relpos}))
+      @dragging = nil
+    end
+    # all widgets
     if data.include?(:pos)
-      pos = Geom::Point3d.new(data[:pos].to_a) unless pos.is_a?(Geom::Point3d)
+      pos = data[:pos]
       # We will not be triggered on mouseout, so we don't know when :hover ends.
       # Therefore set :hover back into :normal before. TODO: is that the best solution here? 
       @widgets.each{|hash| hash[:widget].state = :normal if hash[:widget].state==:hover}
@@ -111,16 +128,7 @@ class OnScreen::Window < OnScreen::Container
   protected
 
 
-  # This can not be called on the window (the window cannot be added from itself).
-  # @private # TODO: or better "undefine" the method?
-  def on_added_to_window(window)
-  end
-
-
-  # This can not be called on the window (the window cannot be removed from itself).
-  # @private # TODO: or better "undefine" the method?
-  def on_removed_from_window(old_window)
-  end
+  attr_accessor :view, :dragging
 
 
   # Returns the size of the viewport.

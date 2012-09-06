@@ -19,7 +19,7 @@ class AE::GUI::OnScreen::Radio < OnScreen::Widget
   def initialize(checkd=true, label="", hash={}, &block)
     hash = hash.dup
     # The widget should be at least as wide that the label fits on it
-    # (assuming average character widht is 10px), so multiply the longest text line by 10.
+    # (assuming average character width is 10px), so multiply the longest text line by 10.
     hash[:width] ||= label.split(/\n/).inject(0){|s,l| l.length>s ? l.length : s} * 9 + 25
     hash[:height] ||= (label.scan(/\n/).length+1) * 15 + 10
     super(hash)
@@ -32,14 +32,16 @@ class AE::GUI::OnScreen::Radio < OnScreen::Widget
   def trigger(type, data)
     # No need to check pos since the whole radio is sensitive for events.
     # No need to distinguish between several sensitive areas of the widget.
-    self.check if type == :click || type == :mouseup
-    data[:args] = [@checked]
+    if type == :click || type == :mouseup || type == :change
+      self.check
+      data[:args] = [@checked]
+    end
     super(type, data)
   end
 
 
   def draw(view, pos, size)
-    style = deep_merge(@style, @style[@state])
+    style = deep_merge(@style, @style[@state]) # TODO: or use multiple_merge???
     radioSize = 25
     radioCircleSize = 17
     margin = (radioSize-radioCircleSize)/2
