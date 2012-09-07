@@ -9,7 +9,10 @@ module AE::GUI
 class OnScreen::Window < OnScreen::Container
 
 
-  attr_accessor :style, :changed, :model, :widgets
+  public
+
+
+  attr_accessor :style, :changed, :model, :widgets, :view
   alias_method :changed?, :changed
 
 
@@ -128,7 +131,7 @@ class OnScreen::Window < OnScreen::Container
   protected
 
 
-  attr_accessor :view, :dragging
+  attr_accessor :dragging
 
 
   # Returns the size of the viewport.
