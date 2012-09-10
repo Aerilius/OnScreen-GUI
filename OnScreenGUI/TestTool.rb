@@ -91,17 +91,17 @@ class OnScreen::TestTool
     window.layout=({:margin=>5})
 
 
-    button = OnScreen::Button.new("Test (native style)", {:width=>120})
+    button = OnScreen::Button.new("Test (native style)", {:width=>120}){|d| puts d.inspect}
     button2 = OnScreen::Button.new("        Test", {:width=>120})
-    toggle = OnScreen::ToggleButton.new(true, "ToggleButton", {:width=>120})
-    checkbox1 = OnScreen::Checkbox.new(true, "Checkbox 1")
-    checkbox2 = OnScreen::Checkbox.new(false, "Checkbox 2")
+    toggle = OnScreen::ToggleButton.new(true, "ToggleButton", {:width=>120}){|d| puts d.inspect}
+    checkbox1 = OnScreen::Checkbox.new(true, "Checkbox 1"){|d| puts d.inspect}
+    checkbox2 = OnScreen::Checkbox.new(false, "Checkbox 2"){|d| puts d.inspect}
     sep1 = OnScreen::Separator.new()
-    radio1 = OnScreen::Radio.new(true, "Radio 1")
-    radio2 = OnScreen::Radio.new(false, "Radio 2")
+    radio1 = OnScreen::Radio.new(true, "Radio 1"){|d| puts d.inspect}
+    radio2 = OnScreen::Radio.new(false, "Radio 2"){|d| puts d.inspect}
     sep2 = OnScreen::Separator.new()
-    radiobuttongroup = OnScreen::RadioButtonGroup.new(1, ["Button 1", "Button 2", "Button 3"], {:width=>200})
-    slider = OnScreen::Slider.new("Slider", [0,45,100], {:width=>250})
+    radiobuttongroup = OnScreen::RadioButtonGroup.new(1, ["Button 1", "Button 2", "Button 3"], {:width=>200}){|d| puts d.inspect}
+    slider = OnScreen::Slider.new("Slider", [0,45,100], {:width=>250}){|d| puts d.inspect}
     text = OnScreen::TextBox.new("a short text...")
     text2 = OnScreen::TextBox.new("a longer text...\n...over...\n...multiple lines...")
     vbox = OnScreen::Container.new({:orientation=>:vertical})

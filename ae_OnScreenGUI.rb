@@ -41,7 +41,6 @@ module AE
         dir = File.join(File.dirname(__FILE__), "OnScreenGUI")
         Dir.glob( File.join(dir, '*.{rb,rbs}') ).
           each{|f| load f }
-#          each{|f| autoload(f[/^[^\.]+/].to_sym, f) }  ### TODO: or this.
       end
 
 
@@ -58,7 +57,7 @@ module AE
       end
 
 
-      def onLButtonDown(flags, x, y, view)
+      def onLButtonDown(flags, x, y, view) # TODO: or use :LButtonDown ?
         @window.trigger(:mousedown, {:pos=>Geom::Point3d.new(x, y, 0), :flags=>flags})
       end
 

@@ -24,7 +24,13 @@ class AE::GUI::OnScreen::Radio < OnScreen::Widget
     hash[:height] ||= (label.scan(/\n/).length+1) * 15 + 10
     super(hash)
     @data[:label] = label
-    self.on(:click, &block) if block_given?
+    self.on(:click){|data|
+      if block_given?
+        index = @parent.children.find_all{|c| c.is_a?(OnScreen::Radio)}.index(self)
+        block.call(index)
+        # block.call(@checked) # TODO: or this?
+      end
+    }
     @checked = checkd
   end
 

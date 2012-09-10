@@ -12,7 +12,7 @@ class OnScreen::Window < OnScreen::Container
   public
 
 
-  attr_accessor :style, :changed, :model, :widgets, :view
+  attr_accessor :style, :changed, :model, :widgets, :view, :dragging
   alias_method :changed?, :changed
 
 
@@ -26,6 +26,7 @@ class OnScreen::Window < OnScreen::Container
     # The @widgets variable caches all absolute positions of all widgets.
     @widgets = []
     @view = @model.active_view
+    @view.invalidate
     @viewport = nil
     # Holds a reference to the widget that is currently dragged.
     @dragging = nil
@@ -48,7 +49,6 @@ class OnScreen::Window < OnScreen::Container
   #                                      Or LButtonDown etc.?
   # @param [Hash] data
   def trigger(type, data)
-    #data[:pos] = Geom::Point3d.new(data[:pos]) if data[:pos] # TODO: remove
     # dragging
     if type == :move && !@dragging.nil?
       dragged = @widgets.find{|hash| hash[:widget] == @dragging}
@@ -129,9 +129,6 @@ class OnScreen::Window < OnScreen::Container
 
 
   protected
-
-
-  attr_accessor :dragging
 
 
   # Returns the size of the viewport.

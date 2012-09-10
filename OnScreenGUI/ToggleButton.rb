@@ -24,7 +24,7 @@ class OnScreen::ToggleButton < OnScreen::Button
     hash[:height] ||= (label.scan(/\n/).length+1) * 15 + 10
     super(label, hash)
     @data[:label] = label
-    self.on(:click, &block) if block_given?
+    self.on(:click){|data| block.call(@checked)} if block_given?
     @checked = pressed
     @state = (@checked)? :pressed : :normal
   end

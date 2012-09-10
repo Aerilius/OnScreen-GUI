@@ -21,7 +21,7 @@ class OnScreen::Button < OnScreen::Widget
     @data = {
       :label => label
     }
-    self.on(:click, &block) if block_given?
+    self.on(:click){|data| block.call()} if block_given?
   end
 
 

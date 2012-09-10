@@ -22,7 +22,7 @@ class OnScreen::Checkbox < OnScreen::Widget
     hash[:height] ||= (label.scan(/\n/).length+1) * 15 + 10
     super(hash)
     @data[:label] = label
-    self.on(:click, &block) if block_given?
+    self.on(:click){|data| block.call(@checked)} if block_given?
     @checked = checkd
   end
 

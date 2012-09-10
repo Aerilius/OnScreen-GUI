@@ -34,7 +34,7 @@ class OnScreen::Slider < OnScreen::Widget
     @value = minmax.length>2 ? minmax.sort[1] : (minmax[0]+minmax[1])/2.0
     self.on(:mousedown)
     self.on(:move)
-    self.on(:mouseup, &block) if block_given?
+    self.on(:mouseup){|data| block.call(@value)} if block_given?
   end
 
 
@@ -61,7 +61,6 @@ class OnScreen::Slider < OnScreen::Widget
           slider_length -= @data[:label_size][1]
         end
       end
-
       case type
       when :mousedown then
         g = @value/(@data[:max]-@data[:min]).to_f * slider_length

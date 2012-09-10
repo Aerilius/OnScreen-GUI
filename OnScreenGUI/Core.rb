@@ -20,7 +20,7 @@ Usage:        * Create a Tool (for input events and the ability to draw on scree
                 button = AE::GUI::OnScreen::Button.new()
                 window.add(button)
               * Call the window.draw method from within the Tool's draw method,
-                and call the window.trigger(event, {:pos, ...}) method from within the Tool's event methods.
+                and call the window.trigger(event, {:pos, :flags, ...}) method from within the Tool's event methods.
         
 Version:      0.2.1
 Date:         05.09.2012
@@ -245,11 +245,13 @@ class OnScreen::Widget
   # @param [Symbol] type Type of the event. Will be something like click, hover...
   #                                      Or LButtonDown etc.?
   # @param [Array] data Data like the position where the event occured on the widget.
-  #   Position is relative to the widget's top left corner. # TODO: without padding!
+  #   Position is relative to the widget's top left corner. # TODO: without padding! Remove padding!
   #   The widget does not (need to) know its absolute position on screen.
   #
   # @return Probably a callback, or Boolean whether event handler has been triggered.
   # TODO: additional view param necessary?
+  # TODO: should the current state of the widget allow more than one value?
+  #   :hover, :active and :focus can happen at the same time, or independend from each other.
   def trigger(type, data)
     # Example: Check if the widget has a sensitive area that includes pos.
     # Then set the widget state for styling or call an action.

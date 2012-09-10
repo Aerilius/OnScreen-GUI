@@ -49,7 +49,8 @@ This creates various widgets. A block could be attached to some widgets.
 **hash** [Hash] Optionally CSS-properties for layout and style. 
   If incomplete or not given, properties of the window or default properties will be taken.
 
-**block** [//Proc//] A block that is called on change. It receives the new value (Boolean, label/String).
+**block** [//Proc//] A block that is called on change. 
+  Here, the block's argument is the new value (Checkbox/ToggleButton: Boolean, Radio/RadioButtonGroup: Integer, Slider: Float).
 \\ \\
 
 
@@ -78,21 +79,25 @@ OnScreen::Widget.on=(type, &block)
 }}}
 This sets an event handler for a widget.
 
-**type** [Symbol] a Symbol indicating the type of event (//:click//, //:mouseOver//, ...?).
+**type** [Symbol] a Symbol indicating the type of event (//:move//, //:mousedown//, //:mouseup//, ...).
 
-**block** [Proc] a code block to execute when the event is triggered.
+**block** [Proc] a code block to execute when the event is triggered. 
+  The block's argument is a hash containing the event's raw data:
+  * :pos the relative position to the widget's upper left corner [//Geom::Point3d//]
+  * :flags
+  * :key ...
 \\ \\
 
 
 {{{
-OnScreen::Window.new(context, hash)
+OnScreen::Window.new(hash, context)
 }}}
 This is the root element for any widgets to be drawn on the screen. It would be created inside a Tool.
 
-**context** [//Sketchup::Model, Sketchup::View//] Optionally a model or view to which the Window belongs (Multi-document interface etc.).
-
 **hash** [Hash] Optionally CSS-properties for layout and style. These properties attached to the Window
   serve as a template for all other widgets.
+
+**context** [//Sketchup::Model, Sketchup::View//] Optionally a model or view to which the Window belongs (Multi-document interface etc.).
 \\ \\
 
 
@@ -121,14 +126,17 @@ Removes widgets from their container and from the window.
 
 
 {{{
-OnScreen::Window.trigger(type, pos)
+OnScreen::Window.trigger(type, data)
 }}}
 Triggers an event on the window, which will forwarded the event to the contained elements.
   As for now, this must be called from a Tool's event handler method.
 
-**type** [//Symbol//] a Symbol indicating the type of event (//:mousedown//, //:mouseup//, //:click// (deprecated), //:move//, ...?).
+**type** [//Symbol//] a Symbol indicating the type of event (//:move//, //:mousedown//, //:mouseup//, ...).
 
-**pos** [//Geom::Point3d//] a relative position to the window's upper left corner.
+**data** [//Hash//] a hash containing the event's data:
+  * :pos the relative position to the window's upper left corner [//Geom::Point3d//]
+  * :flags
+  * :key ...
 \\ \\
 
 
