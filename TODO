@@ -1,0 +1,22 @@
+• Make the toolkit flexible enough to work in 3d => 
+  :width, :height, :depth, size=Geom::Vector3d(x,y,z), 
+  :left, :right, :top, :bottom, :front, :back, 
+  :marginFront, :marginBack, :paddingFront, :paddingBack ...
+  
+• allow widgets/elements to break out of relative 2d screen space layout, 
+  connected to Vertex/Point3d/DrawingElement instead of screen space ORIGIN.
+  Should this be in :position = :absolute | :relative | Geom::Point3d
+  Or new property? Or property of the "Window" element? Rename "Window" in "drawing space" ?
+  
+• Make it easier to create complex widgets (like the slider). They are currently 
+  difficult to code.
+  A better approach is a "composite widget" that is a sort of container with an 
+  additional "hidden" set of embedded children widgets.
+  embedded children widgets. These would be positioned by the layout engine and 
+  you don't need to handle positions/sizes:
+  • in case of the slider: a label for the name, a label of the minimum value,
+    a long bar (horiz. or vert.), a movable button, a label for the maximum value
+  • in case of dialogs/windows:
+    embedded: a rectangular title bar + a dialog border (where you could resize the dialog),
+    a container where you could add any other widgets (the content of the dialog)
+    

@@ -1,0 +1,241 @@
+#!/usr/bin/ruby
+=begin
+Ruby OnScreen Toolkit:
+
+• create meta event :drag data={:pos => currentpos, sourcepos, relpos}
+• Make sure not to create to many symbols, can't be garbage-collected.
+• Create better documentation:
+  How to use widgets: (see bitbucket wiki)
+  How to create new widgets:
+    Subclassing existing widget classes or the Widget base class
+    Compositing widgets
+  How the internals work (less important, only for contributors)
+• widget.set_data, widget.get_data; or just keep widget.data[] ?
+• display and visibility true/false
+
+Widget:
+ window
+ parent
+ draw
+ sizes and compileLayout
+ behaviours (Mixins):
+   layout & style
+   events (containers don't need this)
+   children (add, remove; contentsize)
+   text (text_width, text_height)
+
+Container: specify size of content area?
+=> to types of containers:
+Box: for layout (not visible, no border)
+Container: for creating other widgets
+  How to implement? There is always one set of children, how to separate what is added to the container, and what is internally belonging to it?
+  Container < Box; contents = Box.new; self.add(bla, bla, contents, bla)
+  self.add = contents.add # alias or redefine
+
+"Composite Widget":
+  Maybe special Container class for compositing new widgets. Would maintain it's own layoutCache and compile_layout.
+
+Dialog
+Block with title, close button
+  movable when dragging title
+Content area; insert further children here
+Border for resizing:
+  widgets/buttons without style;
+  force layout align top left?
+  mousedown => dragging; remember mousedown position (on window level)
+  move => change size & position: layout[:top] =layout[:left] ?
+  mouseup => release dragging
+
+
+So we need to specify a "content area" in a container, or use padding for that?
+Since we want to place our own widgets inside, we shouldn't use padding, rather add a child box where new children will be redirected to.
+add() adds children into @children which is considered for layout => replace that with childbox.children?
+
+
+
+Idea: noStretch = true/false: element size fits content, otherwise 100%
+  or maybe: get rid of percent; use noStretch; if Stretch then element width = parent element width / amount of children.
+
+
+##############################################################################
+
+
+WIDGET
+  - layout&style
+  - size
+  - draw
+  - trigger
+  - initialize
+
+
+CONTAINER
+  - has children, add, remove
+
+WINDOW
+  - special compile_layout
+  - special trigger
+  - special draw
+  - DrawCache
+  - keeps track of focus, drag&drop etc.
+  - has children, add, remove
+
+MIXINs:
+[widget]:
+  @window
+  @parent
+  draw
+  sizes and compile_layout
+containable: # requires: widget, events
+  @children
+  add
+  remove
+  contentsize
+  innersize (?)
+layout & style:
+  layout=
+  style=
+  layout[]
+  style[]
+events:
+  on
+  trigger
+  # important: trigger should only respond to position etc. if the widget is visible/drawable
+  # eventually event propagation/bubbling
+text:
+  # abstraction for text size estimation (Windows, 96dpi: one character is ~7-9×15px)
+  text_width
+  text_height
+drawable:
+  @focus, @hover, @active, @dragging (?), ...
+  draw
+  trigger super (adds hover and other states)
+  invalidate_drawcache for this element (TODO: later add support to drawcache for per-element updates, not clearing the whole cache)
+
+
+CLASSES:
+Layout/Style
+Widget
+Container
+Window
+
+Composite < Widget
+  # special: maintains a private collection of children
+  compile_layout
+  invalidate_layout
+
+
+=end
+
+class Dialog
+@titlebarHeight
+self.add(box with width)
+
+
+
+Slider=[label, box[start, box[background_start, button, background_end], end] ]
+or
+Slider=[label, box[start, box[background_start, button, background_end], end] ]
+
+button.on(:drag){ left => ...%, background_start.length = %, background_end.length = %  }
+
+  
+  
+  
+  
+examples:
+#orientation vertical
+#valign top
+label
+start
+slider
+end
+
+#valign bottom
+start
+slider
+end
+label
+
+#orientation horizontal
+#align left
+label start slider end
+
+#align right
+start slider end label
+
+#align center
+#valign bottom
+start slider end
+      label
+
+#align center
+#valign top
+      label
+start slider end
+  
+def initialize(text="")
+  hash[:padding] = 0 #?
+  super(hash)
+
+  if text.empty?
+    slider_box = self
+  else
+    # Layouting of label and slider_box
+    label = Label.new(text)
+    slider_box = Container.new({:align=>:center, :valign=>:middle})
+    if @layout[:orientation] == :horizontal && @layout[:align] != :center
+      if @layout[:align] == :left
+        @layout[:paddingLeft] ||= 0; @layout[:paddingLeft] += label.text_width
+        label.layout[:marginLeft] = -label.text_width
+      else # if @layout[:align] == :right
+        @layout[:paddingRight] ||= 0; @layout[:paddingRight] += label.text_width
+        label.layout[:marginRight] = -label.text_width
+      end
+      slider_box.layout[:width] = :"100%"
+      self.add(label, slider_box)
+    else
+      if @layout[:orientation] == :horizontal && @layout[:align] == :center
+        self.layout[:orientation] = :vertical
+        slider_box.layout[:orientation] = :horizontal
+      else if @layout[:valign] == :top
+        @layout[:paddingTop] ||= 0; @layout[:paddingTop] += label.text_height
+        label.layout[:marginTop] = -label.text_height
+      else # if @layout[:valign] == :bottom # :middle not implemented, makes no sense
+        @layout[:paddingBottom] ||= 0; @layout[:paddingBottom] += label.text_height
+        label.layout[:marginBottom] = -label.text_height
+      end
+      slider_box.layout[:height] = :"100%"
+      self.add(label, slider_box)
+    end
+  end
+
+  # Layouting of slider labels and slider
+  label_start = Label.new()
+  slider_start = Widget.new(@style) # TODO: modify borderRadius
+  slider_thumb = Button.new("", @style)
+  slider_end = Widget.new(@style) # TODO: modify borderRadius and borderWidth etc.
+  label_end = Label.new()
+  if @layout[:orientation] == :horizontal
+    slider_start.layout[:width] =
+    slider_start.layout[:height] =
+    @layout[:paddingLeft] ||= 0; @layout[:paddingLeft] += label.text_width
+    label.layout[:marginLeft] = -label.text_width
+  else # if @layout[:orientation] == :vertical
+    @layout[:paddingRight] ||= 0; @layout[:paddingRight] += label.text_width
+    label.layout[:marginRight] = -label.text_width
+  end
+  slider_box.add(label_start, slider_start, slider_thumb, slider_end, label_end)
+
+  o = @layout[:orientation] == :horizontal # TODO: do this at the beginning
+  # Make the slider dynamic
+  slider_thumb.on(:drag){|data|
+    delta = data[:relpos][o ? 0 : 1] # relative movement since the drag start; maybe call it :delta
+    slider_start.layout[o ? :width : :height] = delta
+    slider_end.layout[o ? :width : :height] = delta
+    # calculate value
+    # trigger block with value
+  }
+end
+
+  
+  
